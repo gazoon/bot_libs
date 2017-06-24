@@ -3,9 +3,9 @@ package messenger
 import (
 	"context"
 	"net/http"
-	"notifier/libs/logging"
 	"time"
 
+	"bot_libs/logging"
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/pkg/errors"

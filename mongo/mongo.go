@@ -2,11 +2,11 @@ package mongo
 
 import (
 	"context"
-	"notifier/libs/logging"
 	"strconv"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gazoon/bot_libs/logging"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 )

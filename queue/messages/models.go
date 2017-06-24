@@ -1,7 +1,7 @@
 package msgsqueue
 
 import (
-	"notifier/libs/logging"
+	"github.com/gazoon/bot_libs/logging"
 	"strings"
 	"time"
 )

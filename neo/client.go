@@ -4,15 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"notifier/libs/logging"
 
 	log "github.com/Sirupsen/logrus"
 
+	"time"
+
+	"github.com/gazoon/bot_libs/logging"
 	neoDriver "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 	grapherrors "github.com/johnnadratowski/golang-neo4j-bolt-driver/errors"
 	graphmessages "github.com/johnnadratowski/golang-neo4j-bolt-driver/structures/messages"
 	"github.com/pkg/errors"
-	"time"
 )
 
 var (

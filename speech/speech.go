@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"notifier/libs/logging"
 	"regexp"
 	"time"
 
 	"encoding/base64"
+	"github.com/gazoon/bot_libs/logging"
 	"github.com/pkg/errors"
 )
 

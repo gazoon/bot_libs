@@ -2,15 +2,14 @@ package msgsqueue
 
 import (
 	"context"
-	"notifier/libs/logging"
 	"sync"
 	"time"
 
-	"notifier/libs/mongo"
-
 	"github.com/emirpasic/gods/sets/treeset"
-	"notifier/libs/queue"
 
+	"github.com/gazoon/bot_libs/logging"
+	"github.com/gazoon/bot_libs/mongo"
+	"github.com/gazoon/bot_libs/queue"
 	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
