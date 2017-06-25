@@ -54,13 +54,15 @@ func NewMongoQueue(database, user, password, host string, port, timeout, poolSiz
 
 func (mq *MongoQueue) Put(ctx context.Context, msg *Message) error {
 	err := mq.client.UpsertRetry(ctx,
-		bson.M{"chat_id": msg.Chat.ID, "msgs.message_id": bson.M{"$ne": msg.ID}},
+		bson.M{"chat_id": msg.Chat.ID, "msgs.request_id": bson.M{"$ne": msg.RequestID}},
 		bson.M{
 			"$set":  bson.M{"chat_id": msg.Chat.ID},
 			"$push": bson.M{"msgs": msg},
 		})
 	if err == mongo.DuplicateKeyErr {
-		return DuplicateMsgErr
+		logger := logging.FromContextAndBase(ctx, gLogger)
+		logger.WithField("msg", msg).Warn("Message duplication")
+		return nil
 	}
 	return err
 }
@@ -250,11 +252,6 @@ func (mq *InMemoryQueue) Put(ctx context.Context, msg *Message) error {
 	var chatQueue *chatMessages
 	if result != nil {
 		chatQueue = result.(*chatMessages)
-		for _, queuedMsg := range chatQueue.msgs {
-			if queuedMsg.ID == msg.ID {
-				return DuplicateMsgErr
-			}
-		}
 	} else {
 		chatQueue = &chatMessages{chatID: msg.Chat.ID}
 	}

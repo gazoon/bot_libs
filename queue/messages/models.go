@@ -7,7 +7,7 @@ import (
 )
 
 type Message struct {
-	ID             int       `bson:"message_id"`
+	MessageID      int      `bson:"message_id"`
 	RequestID      string    `bson:"request_id"`
 	Chat           *Chat     `bson:"chat"`
 	Text           string    `bson:"text"`

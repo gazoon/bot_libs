@@ -37,6 +37,14 @@ func transformUser(u *tgbotapi.User) *msgsqueue.User {
 	}
 }
 
+func transformChat(c *tgbotapi.Chat) *msgsqueue.Chat {
+	return &msgsqueue.Chat{
+		ID:        int(c.ID),
+		IsPrivate: c.IsPrivate(),
+		Title:     c.Title,
+	}
+}
+
 func prepareContext(requestID string) context.Context {
 	logger := logging.WithRequestID(requestID)
 	ctx := logging.NewContext(context.Background(), logger)
@@ -88,16 +96,11 @@ func (tp *TelegramPoller) updateMessageToModel(updateMessage *tgbotapi.Message) 
 	if updateMessage.NewChatMembers != nil && len(*updateMessage.NewChatMembers) != 0 {
 		newChatMember = &(*updateMessage.NewChatMembers)[0]
 	}
-	chatID := int(updateMessage.Chat.ID)
 	message := &msgsqueue.Message{
-		ID:    updateMessage.MessageID,
-		Text:  strings.TrimSpace(updateMessage.Text),
-		Voice: voice,
-		Chat: &msgsqueue.Chat{
-			ID:        chatID,
-			IsPrivate: updateMessage.Chat.IsPrivate(),
-			Title:     updateMessage.Chat.Title,
-		},
+		MessageID:         updateMessage.MessageID,
+		Text:       updateMessage.Text,
+		Voice:      voice,
+		Chat:       transformChat(updateMessage.Chat),
 		From:       transformUser(updateMessage.From),
 		IsBotAdded: tp.userIsBot(newChatMember),
 		IsBotLeft:  tp.userIsBot(updateMessage.LeftChatMember),
@@ -111,26 +114,54 @@ func (tp *TelegramPoller) updateMessageToModel(updateMessage *tgbotapi.Message) 
 	return message, nil
 }
 
+func callbackQueryToModel(callback *tgbotapi.CallbackQuery) (*msgsqueue.Message, error) {
+	if callback.From == nil {
+		return nil, errors.New("callback without from")
+	}
+	if callback.Message == nil {
+		return nil, errors.New("callback without message")
+	}
+	if callback.Message.Chat == nil {
+		return nil, errors.New("callback without chat")
+	}
+	message := &msgsqueue.Message{
+		Chat: transformChat(callback.Message.Chat),
+		Text: callback.Data,
+		From: transformUser(callback.From),
+	}
+	return message, nil
+}
+
 func (tp *TelegramPoller) processUpdate(update *tgbotapi.Update) {
 	requestID := logging.NewRequestID()
 	ctx := prepareContext(requestID)
 	logger := logging.FromContextAndBase(ctx, gLogger)
-	if update.Message == nil {
-		logger.Infof("Skip update without the Message field: %+v", update)
+	if update.Message == nil && update.CallbackQuery == nil {
+		logger.Infof("Skip update without the Message or CallbackQuery fields: %+v", update)
 		return
 	}
-	msg, err := tp.updateMessageToModel(update.Message)
-	if err != nil {
-		logger.Warnf("Cannot transform telegram update %+v to message: %s", update, err)
-		return
+	var msg *msgsqueue.Message
+	if update.Message != nil {
+		var err error
+		msg, err = tp.updateMessageToModel(update.Message)
+		if err != nil {
+			logger.Warnf("Cannot transform telegram update message %+v to queue message: %s", update.Message, err)
+			return
+		}
+	} else {
+		var err error
+		msg, err = callbackQueryToModel(update.CallbackQuery)
+		if err != nil {
+			logger.Warnf("Cannot transform telegram callback %+v to queue message: %s", update.CallbackQuery, err)
+			return
+		}
 	}
 	msg.RequestID = requestID
 	msg.CreatedAt = time.Now()
+	msg.Text = strings.TrimSpace(msg.Text)
 	logger.WithField("msg", msg).Info("Put a new msg in the incoming queue")
-	err = tp.queue.Put(ctx, msg)
-	if err == msgsqueue.DuplicateMsgErr {
-		logger.Warn("Message already exists in the incoming queue, skip")
-	} else if err != nil {
+	err := tp.queue.Put(ctx, msg)
+	if err != nil {
 		logger.Errorf("Cannot put incoming msg: %s", err)
 	}
 }

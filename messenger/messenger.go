@@ -21,12 +21,18 @@ var (
 	gLogger = logging.WithPackage("messenger")
 )
 
+type Button struct {
+	Text    string
+	Payload string
+}
+
 type Messenger interface {
 	SendText(ctx context.Context, chatID int, text string) (int, error)
 	SendReply(ctx context.Context, chatID, msgID int, text string) (int, error)
 	SendForward(ctx context.Context, toChatID, fromChatID, msgID int) (int, error)
 	IsUserInChat(ctx context.Context, userID, chatID int) (bool, error)
 	DeleteMessage(ctx context.Context, messageID, chatID int) error
+	SendTextWithButtons(ctx context.Context, chatID int, text string, buttons ...*Button) (int, error)
 	DownloadFile(ctx context.Context, fileID string) ([]byte, error)
 }
 
@@ -110,6 +116,21 @@ func (ts *telegram) DownloadFile(ctx context.Context, fileID string) ([]byte, er
 
 	content, err := ioutil.ReadAll(resp.Body)
 	return content, errors.Wrap(err, "file content reading failed")
+}
+
+func (ts *telegram) SendTextWithButtons(ctx context.Context, chatID int, text string, buttons ...*Button) (int, error) {
+	buttonsData := make([]tgbotapi.InlineKeyboardButton, len(buttons))
+	for i, b := range buttons {
+		buttonsData[i] = tgbotapi.NewInlineKeyboardButtonData(b.Text, b.Payload)
+	}
+	row := tgbotapi.NewInlineKeyboardRow(buttonsData...)
+	msg := tgbotapi.NewMessage(int64(chatID), text)
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(row)
+	sentMessage, err := ts.bot.Send(msg)
+	if err != nil {
+		return 0, errors.Wrap(err, "cannot send msg reply markup to telegram API")
+	}
+	return sentMessage.MessageID, nil
 }
 
 func (ts *telegram) DeleteMessage(ctx context.Context, messageID, chatID int) error {
