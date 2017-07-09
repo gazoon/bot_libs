@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"bot_libs/logging"
 	log "github.com/Sirupsen/logrus"
+	"github.com/gazoon/bot_libs/logging"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/pkg/errors"
 	"io/ioutil"

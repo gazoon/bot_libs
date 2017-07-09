@@ -6,10 +6,11 @@ import (
 	"context"
 	"net/http"
 
+	"encoding/json"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/satori/go.uuid"
-	"encoding/json"
 )
 
 var (
@@ -26,6 +27,22 @@ const (
 
 	loggerCtxKey = ContextKey(1)
 )
+
+type GlobalLogger struct {
+	Logger *log.Entry
+}
+
+func NewGlobalLogger(packageName string, additional log.Fields) *GlobalLogger {
+	logger := WithPackage(packageName)
+	if len(additional) > 0 {
+		logger = logger.WithFields(additional)
+	}
+	return &GlobalLogger{logger}
+}
+
+func (l *GlobalLogger) GetLogger(ctx context.Context) *log.Entry {
+	return FromContextAndBase(ctx, l.Logger)
+}
 
 type customFormatter struct {
 	logFormatter     log.Formatter
@@ -115,7 +132,6 @@ func PatchStdLog(logLevelName, serviceName, serverID string) {
 	log.SetLevel(logLevel)
 	log.SetFormatter(formatter)
 }
-
 
 func StartLevelToggle(togglePath string, port int) {
 	mux := http.NewServeMux()
