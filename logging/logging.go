@@ -28,19 +28,19 @@ const (
 	loggerCtxKey = ContextKey(1)
 )
 
-type GlobalLogger struct {
+type ObjectLogger struct {
 	Logger *log.Entry
 }
 
-func NewGlobalLogger(packageName string, additional log.Fields) *GlobalLogger {
+func NewObjectLogger(packageName string, additional log.Fields) *ObjectLogger {
 	logger := WithPackage(packageName)
 	if len(additional) > 0 {
 		logger = logger.WithFields(additional)
 	}
-	return &GlobalLogger{logger}
+	return &ObjectLogger{logger}
 }
 
-func (l *GlobalLogger) GetLogger(ctx context.Context) *log.Entry {
+func (l *ObjectLogger) GetLogger(ctx context.Context) *log.Entry {
 	return FromContextAndBase(ctx, l.Logger)
 }
 
