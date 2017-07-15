@@ -26,6 +26,10 @@ type Button struct {
 	Payload string
 }
 
+func (b Button) String() string {
+	return logging.ObjToString(&b)
+}
+
 type Messenger interface {
 	SendText(ctx context.Context, chatID int, text string) (int, error)
 	SendReply(ctx context.Context, chatID, msgID int, text string) (int, error)
