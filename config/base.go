@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"flag"
 	"github.com/pkg/errors"
 	"io/ioutil"
 )
@@ -26,6 +27,7 @@ type DatabaseSettings struct {
 type DatabaseQueue struct {
 	DatabaseSettings `json:",inline"`
 	FetchDelay       int `json:"fetch_delay"`
+	WorkersNum       int `json:"workers_num"`
 }
 
 type TelegramSettings struct {
@@ -53,15 +55,19 @@ type GoogleAPI struct {
 
 func FromJSONFile(path string, config interface{}) error {
 	if path == "" {
-		return errors.New("empty config path")
+		return errors.New("json config: empty path")
 	}
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return errors.Wrap(err, "cannot read config file")
+		return errors.Wrap(err, "json config: cannot read file")
 	}
 	err = json.Unmarshal(data, config)
 	if err != nil {
-		return errors.Wrap(err, "cannot parse json file")
+		return errors.Wrap(err, "json config: cannot parse file content")
 	}
 	return nil
+}
+
+func FromCmdArgs(confPath *string) {
+	flag.StringVar(confPath, "conf", "conf.json", "Path to the config file")
 }

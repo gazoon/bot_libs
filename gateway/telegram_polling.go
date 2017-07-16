@@ -20,6 +20,7 @@ var (
 const (
 	audioEncoding   = "OGG_OPUS"
 	audioSampleRate = 16000
+	mentionSign     = "@"
 )
 
 func transformUser(u *tgbotapi.User) *msgsqueue.User {
@@ -52,15 +53,18 @@ func prepareContext(requestID string) context.Context {
 }
 
 type TelegramPoller struct {
-	queue       msgsqueue.Producer
-	botName     string
-	pollTimeout int
-	retryDelay  int
-	apiToken    string
+	queue         msgsqueue.WriteQueue
+	botName       string
+	pollTimeout   int
+	retryDelay    int
+	apiToken      string
+	mentionPrefix string
 }
 
-func NewTelegramPoller(queue msgsqueue.Producer, apiToken, botName string, pollTimeout, retryDelay int) *TelegramPoller {
-	return &TelegramPoller{queue: queue, botName: botName, apiToken: apiToken, pollTimeout: pollTimeout, retryDelay: retryDelay}
+func NewTelegramPoller(queue msgsqueue.WriteQueue, apiToken, botName string, pollTimeout, retryDelay int) *TelegramPoller {
+	mentionPrefix := mentionSign + strings.ToLower(botName) + " "
+	return &TelegramPoller{queue: queue, botName: botName, mentionPrefix: mentionPrefix, apiToken: apiToken,
+		pollTimeout: pollTimeout, retryDelay: retryDelay}
 }
 
 func (tp *TelegramPoller) userIsBot(u *tgbotapi.User) bool {
@@ -68,6 +72,15 @@ func (tp *TelegramPoller) userIsBot(u *tgbotapi.User) bool {
 		return false
 	}
 	return u.UserName == tp.botName
+}
+
+func (tp *TelegramPoller) trimBotMention(messageText string) (string, bool) {
+	loweredText := strings.ToLower(messageText)
+	if strings.HasPrefix(loweredText, tp.mentionPrefix) {
+		messageText = strings.TrimSpace(messageText[len(tp.mentionPrefix):])
+		return messageText, true
+	}
+	return messageText, false
 }
 
 func (tp *TelegramPoller) updateMessageToModel(updateMessage *tgbotapi.Message) (*msgsqueue.Message, error) {
@@ -96,10 +109,13 @@ func (tp *TelegramPoller) updateMessageToModel(updateMessage *tgbotapi.Message) 
 	if updateMessage.NewChatMembers != nil && len(*updateMessage.NewChatMembers) != 0 {
 		newChatMember = &(*updateMessage.NewChatMembers)[0]
 	}
+	text := strings.TrimSpace(updateMessage.Text)
+	text, isMention := tp.trimBotMention(text)
 	message := &msgsqueue.Message{
-		MessageID:         updateMessage.MessageID,
-		Text:       updateMessage.Text,
+		MessageID:  updateMessage.MessageID,
+		Text:       text,
 		Voice:      voice,
+		IsAppeal:   isMention,
 		Chat:       transformChat(updateMessage.Chat),
 		From:       transformUser(updateMessage.From),
 		IsBotAdded: tp.userIsBot(newChatMember),
@@ -158,7 +174,6 @@ func (tp *TelegramPoller) processUpdate(update *tgbotapi.Update) {
 	}
 	msg.RequestID = requestID
 	msg.CreatedAt = time.Now()
-	msg.Text = strings.TrimSpace(msg.Text)
 	logger.WithField("msg", msg).Info("Put a new msg in the incoming queue")
 	err := tp.queue.Put(ctx, msg)
 	if err != nil {

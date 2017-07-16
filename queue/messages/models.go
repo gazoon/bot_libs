@@ -7,7 +7,7 @@ import (
 )
 
 type Message struct {
-	MessageID      int      `bson:"message_id"`
+	MessageID      int       `bson:"message_id"` // could be 0
 	RequestID      string    `bson:"request_id"`
 	Chat           *Chat     `bson:"chat"`
 	Text           string    `bson:"text"`
@@ -17,6 +17,7 @@ type Message struct {
 	LeftChatMember *User     `bson:"left_chat_member"`
 	IsBotLeft      bool      `bson:"is_bot_left"`
 	IsBotAdded     bool      `bson:"is_bot_added"`
+	IsAppeal       bool      `bson:"is_appeal"`
 	CreatedAt      time.Time `bson:"created_at"`
 }
 

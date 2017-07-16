@@ -23,14 +23,13 @@ const (
 
 var (
 	gLogger         = logging.WithPackage("incoming_queue")
-	DuplicateMsgErr = errors.New("message is already in the queue")
 )
 
-type Producer interface {
+type WriteQueue interface {
 	Put(ctx context.Context, msg *Message) error
 }
 
-type Consumer interface {
+type ReadQueue interface {
 	GetNext() (*Message, string, bool)
 	FinishProcessing(ctx context.Context, processingID string)
 	StopGivingMsgs()
