@@ -57,17 +57,37 @@ func NewClient(database, collection, user, password, host string, port, timeout,
 }
 
 func (c *Client) Find(ctx context.Context, query interface{}, sort string, limit int, model interface{}) error {
-	logger := logging.FromContextAndBase(ctx, gLogger)
+	return c.find(ctx, query, sort, limit, false, model)
+}
+
+func (c *Client) FindOne(ctx context.Context, query interface{}, model interface{}) error {
+	return c.find(ctx, query, "", 0, true, model)
+}
+
+func (c *Client) find(ctx context.Context, query interface{}, sort string, limit int, isOne bool, model interface{}) error {
+	logger := logging.FromContextAndBase(ctx, gLogger).WithField("query", query)
 	q := c.collection.Find(query)
-	if sort != "" {
-		q = q.Sort(sort)
+	if !isOne {
+		if sort != "" {
+			q = q.Sort(sort)
+		}
+		if limit > 0 {
+			q = q.Limit(limit)
+		}
+		logger.WithFields(log.Fields{"sort": sort, "limit": limit}).Info("Find all documents")
+	} else {
+		logger.Info("Find one document")
 	}
-	if limit > 0 {
-		q = q.Limit(limit)
-	}
-	logger.WithFields(log.Fields{"query": query, "sort": sort, "limit": limit}).Info("Find all documents")
 	return c.withRetriesLoop(ctx, true, func() error {
-		err := q.All(model)
+		var err error
+		if isOne {
+			err = q.One(model)
+			if err == mgo.ErrNotFound {
+				return err
+			}
+		} else {
+			err = q.All(model)
+		}
 		return errors.Wrap(err, "find failed")
 	})
 }
