@@ -60,6 +60,17 @@ func (c *Client) Find(ctx context.Context, query interface{}, sort string, limit
 	return c.find(ctx, query, sort, limit, offset, false, model)
 }
 
+func (c *Client) Count(ctx context.Context, query interface{}) (int, error) {
+	q := c.collection.Find(query)
+	var n int
+	err := c.withRetriesLoop(ctx, true, func() error {
+		var err error
+		n, err = q.Count()
+		return errors.Wrap(err, "count failed")
+	})
+	return n, err
+}
+
 func (c *Client) FindOne(ctx context.Context, query interface{}, model interface{}) error {
 	return c.find(ctx, query, "", 0, 0, true, model)
 }

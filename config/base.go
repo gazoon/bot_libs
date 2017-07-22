@@ -10,6 +10,7 @@ import (
 type BaseConfig struct {
 	ServiceName string `json:"service_name"`
 	ServerID    string `json:"server_id"`
+	Port        int    `json:"port"`
 }
 
 type DatabaseSettings struct {
