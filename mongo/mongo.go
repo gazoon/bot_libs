@@ -56,23 +56,28 @@ func NewClient(database, collection, user, password, host string, port, timeout,
 	}, nil
 }
 
-func (c *Client) Find(ctx context.Context, query interface{}, sort string, limit int, model interface{}) error {
-	return c.find(ctx, query, sort, limit, false, model)
+func (c *Client) Find(ctx context.Context, query interface{}, sort string, limit, offset int, model interface{}) error {
+	return c.find(ctx, query, sort, limit, offset, false, model)
 }
 
 func (c *Client) FindOne(ctx context.Context, query interface{}, model interface{}) error {
-	return c.find(ctx, query, "", 0, true, model)
+	return c.find(ctx, query, "", 0, 0, true, model)
 }
 
-func (c *Client) find(ctx context.Context, query interface{}, sort string, limit int, isOne bool, model interface{}) error {
+func (c *Client) find(ctx context.Context, query interface{}, sort string, limit, offset int, isOne bool,
+	model interface{}) error {
+
 	logger := logging.FromContextAndBase(ctx, gLogger).WithField("query", query)
 	q := c.collection.Find(query)
 	if !isOne {
 		if sort != "" {
 			q = q.Sort(sort)
 		}
-		if limit > 0 {
+		if limit >= 0 {
 			q = q.Limit(limit)
+		}
+		if offset >= 0 {
+			q = q.Skip(offset)
 		}
 		logger.WithFields(log.Fields{"sort": sort, "limit": limit}).Info("Find all documents")
 	} else {

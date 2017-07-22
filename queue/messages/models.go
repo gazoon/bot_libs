@@ -64,3 +64,7 @@ type User struct {
 	Username string `bson:"username"`
 	Name     string `bson:"name"`
 }
+
+func (u User) String() string {
+	return logging.ObjToString(&u)
+}
