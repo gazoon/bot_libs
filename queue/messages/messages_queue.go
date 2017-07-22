@@ -18,7 +18,6 @@ import (
 
 const (
 	MAX_PROCESSING_TIME = 20 * time.Second
-	mongoCollection     = "messages"
 )
 
 var (
@@ -40,10 +39,10 @@ type MongoQueue struct {
 	*queue.BaseConsumer
 }
 
-func NewMongoQueue(database, user, password, host string, port, timeout, poolSize, retriesNum, retriesInterval,
+func NewMongoQueue(database,collection, user, password, host string, port, timeout, poolSize, retriesNum, retriesInterval,
 	fetchDelay int) (*MongoQueue, error) {
 
-	client, err := mongo.NewClient(database, mongoCollection, user, password, host, port, timeout, poolSize, retriesNum,
+	client, err := mongo.NewClient(database, collection, user, password, host, port, timeout, poolSize, retriesNum,
 		retriesInterval)
 	if err != nil {
 		return nil, err

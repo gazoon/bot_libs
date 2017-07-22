@@ -24,10 +24,19 @@ type DatabaseSettings struct {
 	RetriesInterval int    `json:"retries_interval"`
 }
 
-type DatabaseQueue struct {
+type MongoDBSettings struct {
 	DatabaseSettings `json:",inline"`
-	FetchDelay       int `json:"fetch_delay"`
-	WorkersNum       int `json:"workers_num"`
+	Collection       string `json:"collection"`
+}
+
+type QueueSettings struct {
+	FetchDelay int `json:"fetch_delay"`
+	WorkersNum int `json:"workers_num"`
+}
+
+type MongoQueue struct {
+	MongoDBSettings `json:",inline"`
+	QueueSettings   `json:",inline"`
 }
 
 type TelegramSettings struct {
