@@ -25,6 +25,13 @@ type DatabaseSettings struct {
 	RetriesInterval int    `json:"retries_interval"`
 }
 
+type AwsS3Setting struct {
+	AccountID     string `json:"account_id"`
+	AccountSecret string `json:"account_secret"`
+	Region        string `json:"region"`
+	Bucket        string `json:"bucket"`
+}
+
 type MongoDBSettings struct {
 	DatabaseSettings `json:",inline"`
 	Collection       string `json:"collection"`
