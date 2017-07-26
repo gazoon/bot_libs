@@ -123,7 +123,6 @@ func buildLocalPath(filePath string) string {
 		return localName
 	}
 	return path.Dir(filePath) + localName
-
 }
 
 func FromCmdArgs(confPath *string) {

@@ -8,6 +8,8 @@ import (
 	"syscall"
 
 	"github.com/gazoon/bot_libs/logging"
+	"sort"
+	"strings"
 )
 
 var (
@@ -32,4 +34,36 @@ func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return result
+}
+
+func FilterDuplicatesInsensitive(texts []string) []string {
+	set := make(map[string]bool, len(texts))
+	filtered := make([]string, 0, len(texts))
+	for _, text := range texts {
+		lowered := strings.ToLower(text)
+		if inSet := set[lowered]; inSet {
+			continue
+		}
+		set[lowered] = true
+		filtered = append(filtered, text)
+	}
+	return filtered
+}
+
+func SortByOccurrence(texts []string, occurredText string) {
+	occurredIndexes := make([]int, len(texts))
+	for i, text := range texts {
+		occurredIndexes[i] = strings.Index(text, occurredText)
+	}
+	sort.Slice(texts, func(i, k int) bool {
+		firstIndex := occurredIndexes[i]
+		secondIndex := occurredIndexes[k]
+		if firstIndex < 0 {
+			return false
+		}
+		if secondIndex < 0 {
+			return true
+		}
+		return firstIndex < secondIndex
+	})
 }

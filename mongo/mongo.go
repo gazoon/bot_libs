@@ -75,6 +75,15 @@ func (c *Client) FindOne(ctx context.Context, query interface{}, model interface
 	return c.find(ctx, query, "", 0, 0, true, model)
 }
 
+func (c *Client) Distinct(ctx context.Context, key string, query interface{}, model interface{}) error {
+	q := c.collection.Find(query)
+	return c.withRetriesLoop(ctx, true, func() error {
+		var err error
+		err = q.Distinct(key, model)
+		return errors.Wrap(err, "distinct failed")
+	})
+}
+
 func (c *Client) find(ctx context.Context, query interface{}, sort string, limit, offset int, isOne bool,
 	model interface{}) error {
 
