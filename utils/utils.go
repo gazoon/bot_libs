@@ -7,10 +7,20 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/gazoon/bot_libs/logging"
 	"sort"
 	"strings"
+
+	"github.com/gazoon/bot_libs/logging"
+	"gopkg.in/go-playground/validator.v9"
 )
+
+var (
+	Validate *validator.Validate
+)
+
+func init() {
+	Validate = validator.New()
+}
 
 var (
 	gLogger = logging.WithPackage("utils")
