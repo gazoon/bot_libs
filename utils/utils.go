@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"context"
 	"github.com/gazoon/bot_libs/logging"
 	"gopkg.in/go-playground/validator.v9"
 )
@@ -76,4 +77,11 @@ func SortByOccurrence(texts []string, occurredText string) {
 		}
 		return firstIndex < secondIndex
 	})
+}
+
+func PrepareContext(requestID string) context.Context {
+	ctx := context.Background()
+	logger := logging.WithRequestID(requestID)
+	ctx = logging.NewContext(ctx, logger)
+	return ctx
 }

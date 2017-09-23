@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/gazoon/bot_libs/logging"
+	"github.com/gazoon/bot_libs/utils"
 )
 
 type MsgHandler func(ctx context.Context, msg *Message)
@@ -31,7 +32,7 @@ func (r *Reader) Start() {
 				if !ok {
 					return
 				}
-				ctx := prepareContext(msg)
+				ctx := utils.PrepareContext(msg.RequestID)
 				logger := logging.FromContextAndBase(ctx, gLogger).WithField("processing_id", processingID)
 				logger.WithField("msg", msg).Info("Message received from incoming queue")
 				r.onMessage(ctx, msg)
@@ -48,12 +49,4 @@ func (r *Reader) Stop() {
 	gLogger.Info("Waiting until all workers will process the remaining messages")
 	r.wg.Wait()
 	gLogger.Info("All workers've been stopped")
-}
-
-func prepareContext(msg *Message) context.Context {
-	ctx := context.Background()
-	requestID := msg.RequestID
-	logger := logging.WithRequestID(requestID)
-	ctx = logging.NewContext(ctx, logger)
-	return ctx
 }
