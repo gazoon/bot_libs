@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 )
 
 var (
