@@ -81,7 +81,7 @@ func (mq *MongoQueue) tryGetNext() (*Message, string, bool) {
 		ChatID int        `bson:"chat_id"`
 		Msgs   []*Message `bson:"msgs"`
 	}
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 	processingID := newProcessingID()
 	err := mq.client.FindAndModify(context.Background(),
 		bson.M{
@@ -217,7 +217,7 @@ func (mq *InMemoryQueue) GetNext() (*Message, string, bool) {
 func (mq *InMemoryQueue) tryGetNext() (*Message, string, bool) {
 	mq.mx.Lock()
 	defer mq.mx.Unlock()
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 	_, result := mq.storage.Find(func(index int, value interface{}) bool {
 		chatQueue := value.(*chatMessages)
 		return chatQueue.processedAt == nil || chatQueue.processedAt.Before(currentTime.Add(-MAX_PROCESSING_TIME))
