@@ -3,10 +3,10 @@ package queue
 import (
 	"context"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/go-utils"
 	"github.com/gazoon/go-utils/logging"
 	"github.com/gazoon/go-utils/mongo"
+	"github.com/gazoon/go-utils/request"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/satori/go.uuid"
@@ -34,6 +34,7 @@ func (self *MongoWriter) Put(ctx context.Context, queueName string, chatId int, 
 	messageEnvelope := map[string]interface{}{
 		"created_at": utils.TimestampMilliseconds(),
 		"payload":    message,
+		"request_id": request.FromContext(ctx),
 	}
 	_, err := collection.Upsert(
 		bson.M{"chat_id": chatId},
@@ -60,15 +61,19 @@ func NewMongoReader(settings *utils.MongoDBSettings) (*MongoReader, error) {
 }
 
 type Document struct {
-	ChatID     int                      `bson:"chat_id"`
-	Msgs       []map[string]interface{} `bson:"msgs"`
+	ChatID int `bson:"chat_id"`
+	Msgs   []*struct {
+		CreatedAt int         `bson:"created_at"`
+		Payload   interface{} `bson:"payload"`
+		RequestId string      `bson:"request_id"`
+	} `bson:"msgs"`
 	Processing struct {
 		StartedAt int    `bson:"started_at"`
 		Id        string `bson:"id"`
 	} `bson:"processing"`
 }
 
-func (self *MongoReader) GetNext() (interface{}, string, error) {
+func (self *MongoReader) GetNext() (context.Context, interface{}, string, error) {
 	var doc Document
 	currentTime := utils.TimestampMilliseconds()
 	processingID := uuid.NewV4().String()
@@ -85,21 +90,26 @@ func (self *MongoReader) GetNext() (interface{}, string, error) {
 		&doc)
 	if err != nil {
 		if err != mgo.ErrNotFound {
-			return nil, "", err
+			return nil, nil, "", err
 		}
-		return nil, "", nil
+		return nil, nil, "", nil
 	}
-	ctx := logging.NewContextBackground(log.WithField("chat_id", doc.ChatID))
-	logger := self.GetLogger(ctx)
-	if doc.Processing.StartedAt < currentTime-maxProcessingTime {
-		logger.Errorf("Processing for chat took to long")
-	}
+	ctx := context.Background()
+	logger := self.Logger.WithField("chat_id", doc.ChatID)
 	if len(doc.Msgs) == 0 {
 		logger.Warn("Got document without messages, finish processing")
 		self.FinishProcessing(ctx, processingID)
-		return nil, "", nil
+		return nil, nil, "", nil
 	}
-	return doc.Msgs[0]["payload"], processingID, nil
+	message := doc.Msgs[0]
+	if message.RequestId != "" {
+		ctx = request.NewContext(ctx, message.RequestId)
+		logger = logging.WithRequestIDAndBase(message.RequestId, logger)
+	}
+	if doc.Processing.StartedAt < currentTime-maxProcessingTime {
+		logger.Errorf("Processing for chat took to long")
+	}
+	return ctx, message.Payload, processingID, nil
 }
 
 func (self *MongoReader) FinishProcessing(ctx context.Context, processingID string) error {
