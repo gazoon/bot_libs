@@ -22,7 +22,7 @@ type MongoWriter struct {
 
 func NewMongoWriter(settings *utils.MongoDBSettings) (*MongoWriter, error) {
 
-	client, err := mongo.Connect(settings)
+	client, err := mongo.ConnectDatabase(settings)
 	if err != nil {
 		return nil, err
 	}
@@ -52,12 +52,12 @@ type MongoReader struct {
 
 func NewMongoReader(settings *utils.MongoDBSettings) (*MongoReader, error) {
 
-	client, err := mongo.Connect(settings)
+	collection, err := mongo.ConnectCollection(settings)
 	if err != nil {
 		return nil, err
 	}
 	logger := logging.NewLoggerMixin("mongo_queue_reader", nil)
-	return &MongoReader{client: client.C(settings.Collection), LoggerMixin: logger}, nil
+	return &MongoReader{client: collection, LoggerMixin: logger}, nil
 }
 
 type Document struct {
