@@ -73,7 +73,13 @@ type Document struct {
 	} `bson:"processing"`
 }
 
-func (self *MongoReader) GetNext() (context.Context, interface{}, string, error) {
+type ReadyMessage struct {
+	Payload      interface{}
+	RequestId    string // for tracing purposes
+	ProcessingId string // used to identify process currently processing chat message
+}
+
+func (self *MongoReader) GetNext() (*ReadyMessage, error) {
 	var doc Document
 	currentTime := utils.TimestampMilliseconds()
 	processingID := uuid.NewV4().String()
@@ -90,35 +96,33 @@ func (self *MongoReader) GetNext() (context.Context, interface{}, string, error)
 		&doc)
 	if err != nil {
 		if err != mgo.ErrNotFound {
-			return nil, nil, "", err
+			return nil, err
 		}
-		return nil, nil, "", nil
+		return nil, nil
 	}
 	ctx := context.Background()
 	logger := self.Logger.WithField("chat_id", doc.ChatID)
 	if len(doc.Msgs) == 0 {
 		logger.Warn("Got document without messages, finish processing")
 		self.FinishProcessing(ctx, processingID)
-		return nil, nil, "", nil
+		return nil, nil
 	}
 	message := doc.Msgs[0]
-	if message.RequestId != "" {
-		ctx = request.NewContext(ctx, message.RequestId)
-		logger = logging.WithRequestIDAndBase(message.RequestId, logger)
-	}
 	if doc.Processing.StartedAt < currentTime-maxProcessingTime {
 		logger.Errorf("Processing for chat took to long")
 	}
-	return ctx, message.Payload, processingID, nil
+	return &ReadyMessage{
+		Payload:      message.Payload,
+		RequestId:    message.RequestId,
+		ProcessingId: doc.Processing.Id}, nil
 }
 
 func (self *MongoReader) FinishProcessing(ctx context.Context, processingID string) error {
 	err := self.client.Remove(bson.M{"msgs": []interface{}{}, "processing.id": processingID})
-	if err != nil {
-		if err != mgo.ErrNotFound {
-			return err
-		}
-	} else {
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	if err == nil {
 		return nil
 	}
 
