@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/go-utils"
 	"github.com/gazoon/go-utils/logging"
 	"github.com/gazoon/go-utils/mongo"
@@ -79,7 +80,7 @@ type ReadyMessage struct {
 	ProcessingId string // used to identify process currently processing chat message
 }
 
-func (self *MongoReader) GetNext() (*ReadyMessage, error) {
+func (self *MongoReader) GetNext(ctx context.Context) (*ReadyMessage, error) {
 	var doc Document
 	currentTime := utils.TimestampMilliseconds()
 	processingID := uuid.NewV4().String()
@@ -94,14 +95,14 @@ func (self *MongoReader) GetNext() (*ReadyMessage, error) {
 			"$pop": bson.M{"msgs": -1},
 		}},
 		&doc)
-	if err != nil {
-		if err != mgo.ErrNotFound {
-			return nil, err
-		}
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	ctx := context.Background()
-	logger := self.Logger.WithField("chat_id", doc.ChatID)
+	if err != nil {
+		return nil, err
+	}
+	logger := self.GetLogger(ctx).WithFields(
+		log.Fields{"chat_id": doc.ChatID, "processing_id": doc.Processing.Id})
 	if len(doc.Msgs) == 0 {
 		logger.Warn("Got document without messages, finish processing")
 		self.FinishProcessing(ctx, processingID)
@@ -109,7 +110,7 @@ func (self *MongoReader) GetNext() (*ReadyMessage, error) {
 	}
 	message := doc.Msgs[0]
 	if doc.Processing.StartedAt < currentTime-maxProcessingTime {
-		logger.Errorf("Processing for chat took to long")
+		logger.Warn("Previous processing for chat took to long")
 	}
 	return &ReadyMessage{
 		Payload:      message.Payload,
@@ -131,8 +132,8 @@ func (self *MongoReader) FinishProcessing(ctx context.Context, processingID stri
 		bson.M{"$unset": bson.M{"processing": ""}},
 	)
 	if err == mgo.ErrNotFound {
-		logger := self.GetLogger(ctx)
-		logger.Warn("Message document with processing_id %s no longer exists", processingID)
+		logger := self.GetLogger(ctx).WithField("processing_id", processingID)
+		logger.Warn("Message document with such processing id no longer exists")
 		return nil
 	}
 	return err
