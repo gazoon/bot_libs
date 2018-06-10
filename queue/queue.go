@@ -80,6 +80,10 @@ type ReadyMessage struct {
 	ProcessingId string // used to identify process currently processing chat message
 }
 
+func (self ReadyMessage) String() string {
+	return utils.ObjToString(&self)
+}
+
 func (self *MongoReader) GetNext(ctx context.Context) (*ReadyMessage, error) {
 	var doc Document
 	currentTime := utils.TimestampMilliseconds()
@@ -102,20 +106,20 @@ func (self *MongoReader) GetNext(ctx context.Context) (*ReadyMessage, error) {
 		return nil, err
 	}
 	logger := self.GetLogger(ctx).WithFields(
-		log.Fields{"chat_id": doc.ChatID, "processing_id": doc.Processing.Id})
+		log.Fields{"chat_id": doc.ChatID, "processing_id": processingID})
 	if len(doc.Msgs) == 0 {
 		logger.Warn("Got document without messages, finish processing")
 		self.FinishProcessing(ctx, processingID)
 		return nil, nil
 	}
 	message := doc.Msgs[0]
-	if doc.Processing.StartedAt < currentTime-maxProcessingTime {
+	if doc.Processing.StartedAt != 0 && doc.Processing.StartedAt < currentTime-maxProcessingTime {
 		logger.Warn("Previous processing for chat took to long")
 	}
 	return &ReadyMessage{
-		Payload:      message.Payload,
+		Payload:      utils.ConvertBsonToMap(message.Payload),
 		RequestId:    message.RequestId,
-		ProcessingId: doc.Processing.Id}, nil
+		ProcessingId: processingID}, nil
 }
 
 func (self *MongoReader) FinishProcessing(ctx context.Context, processingID string) error {
